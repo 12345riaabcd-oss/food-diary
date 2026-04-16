@@ -1,11 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ProgressDots from "./ProgressDots";
 import IntroScreen from "./IntroScreen";
 import MealLogScreen from "./MealLogScreen";
 import FeelingsScreen from "./FeelingsScreen";
 import ReflectionScreen from "./ReflectionScreen";
+import HistoryScreen, { DiaryEntry } from "./HistoryScreen";
 import { toast } from "@/hooks/use-toast";
+
+const STORAGE_KEY = "food-diary-entries";
+
+const loadEntries = (): DiaryEntry[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveEntries = (entries: DiaryEntry[]) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+};
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -25,6 +41,12 @@ const FoodDiaryExercise = () => {
   const [mealData, setMealData] = useState<Record<string, string>>({});
   const [feelings, setFeelings] = useState("");
   const [reflection, setReflection] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [entries, setEntries] = useState<DiaryEntry[]>(loadEntries);
+
+  useEffect(() => {
+    saveEntries(entries);
+  }, [entries]);
 
   const goNext = () => {
     setDirection(1);
@@ -36,13 +58,25 @@ const FoodDiaryExercise = () => {
   };
 
   const handleHistory = () => {
-    toast({ title: "History", description: "Past entries will appear here soon." });
+    setShowHistory(true);
+  };
+
+  const handleDeleteEntry = (id: string) => {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    toast({ title: "Entry deleted" });
   };
 
   const handleDone = (ref: string) => {
     setReflection(ref);
+    const newEntry: DiaryEntry = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      meals: { ...mealData },
+      feelings,
+      reflection: ref,
+    };
+    setEntries((prev) => [newEntry, ...prev]);
     toast({ title: "Entry saved! 🌱", description: "Great job logging your food diary today." });
-    // Reset to intro
     setDirection(1);
     setStep(0);
     setMealData({});
@@ -62,39 +96,56 @@ const FoodDiaryExercise = () => {
         }}
       >
         <div className="flex flex-col h-full min-h-[680px] px-6 pt-4 pb-6">
-          <ProgressDots currentStep={step} totalSteps={4} />
+          {!showHistory && <ProgressDots currentStep={step} totalSteps={4} />}
 
           <div className="flex-1 relative overflow-hidden">
             <AnimatePresence mode="wait" custom={direction}>
-              <motion.div
-                key={step}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="h-full flex flex-col"
-              >
-                {step === 0 && (
-                  <IntroScreen onStart={goNext} onBack={handleBack} onHistory={handleHistory} />
-                )}
-                {step === 1 && (
-                  <MealLogScreen
-                    initialData={mealData}
-                    onNext={(data) => { setMealData(data); goNext(); }}
+              {showHistory ? (
+                <motion.div
+                  key="history"
+                  initial={{ x: 300, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: 300, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="h-full flex flex-col"
+                >
+                  <HistoryScreen
+                    entries={entries}
+                    onBack={() => setShowHistory(false)}
+                    onDelete={handleDeleteEntry}
                   />
-                )}
-                {step === 2 && (
-                  <FeelingsScreen
-                    initialData={feelings}
-                    onNext={(f) => { setFeelings(f); goNext(); }}
-                  />
-                )}
-                {step === 3 && (
-                  <ReflectionScreen initialData={reflection} onDone={handleDone} />
-                )}
-              </motion.div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={step}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="h-full flex flex-col"
+                >
+                  {step === 0 && (
+                    <IntroScreen onStart={goNext} onBack={handleBack} onHistory={handleHistory} />
+                  )}
+                  {step === 1 && (
+                    <MealLogScreen
+                      initialData={mealData}
+                      onNext={(data) => { setMealData(data); goNext(); }}
+                    />
+                  )}
+                  {step === 2 && (
+                    <FeelingsScreen
+                      initialData={feelings}
+                      onNext={(f) => { setFeelings(f); goNext(); }}
+                    />
+                  )}
+                  {step === 3 && (
+                    <ReflectionScreen initialData={reflection} onDone={handleDone} />
+                  )}
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </div>
