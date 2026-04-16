@@ -85,14 +85,12 @@ const FoodDiaryExercise = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--shell-bg)' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--card-bg)' }}>
       <div
-        className="relative w-full overflow-hidden shadow-xl"
+        className="relative w-full overflow-hidden"
         style={{
           maxWidth: 390,
           minHeight: 680,
-          background: 'var(--card-bg)',
-          borderRadius: 28,
         }}
       >
         <div className="flex flex-col h-full min-h-[680px] px-6 pt-4 pb-6">
